@@ -60,8 +60,8 @@ biden_filter <- biden_augment %>%
            abs(student) > 2 | 
            coosd > influence) %>%
   mutate(high_cooks = ifelse(coosd > influence, "high_cooks", "otherwise"),
-  (high_lev = ifelse(hat>= 2 * mean(hat), "high_lev", "otherwise"),
-  (high_des = ifelse(abs(student) > 2, "high_des", "otherwise"))
+  high_lev = (ifelse(hat>= 2 * mean(hat), "high_lev", "otherwise"),
+  high_des = (ifelse(abs(student) > 2, "high_des", "otherwise"))
   
 # Bubble Plot
 ggplot(biden_filter, aes(hat, student)) +
