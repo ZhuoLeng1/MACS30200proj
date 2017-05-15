@@ -6,10 +6,8 @@ output:
   toc: true
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,cache = TRUE,warning=FALSE,message = FALSE)
-```
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE)
 
-```{r packages, message = FALSE, warning = FALSE, cache = FALSE}
 library(tidyverse)
 library(forcats)
 library(broom)
@@ -33,16 +31,18 @@ library(MVN)
 
 Test the model to identify any unusual and/or influential observations. Identify how you would treat these observations moving forward with this research. Note you do not actually have to estimate a new model, just explain what you would do. This could include things like dropping observations, respecifying the model, or collecting additional variables to control for this influential effect.
 
-```{r q1_1, include = FALSE}
+```{r q1_1, echo = FALSE}
 
 biden <- read_csv("biden.csv") %>%
-  mutate(obs_num = as.numeric(rownames(.)))
+  mutate(num = as.numeric(rownames(.)))
 
 biden_data <- biden %>%
   na.omit()
+biden_data
 ```
 
-```{r q1_1_1, include = FALSE}
+```{r q1_1_1, echo = FALSE}
+
 biden_lm <- lm(biden ~ age + female + educ, data = biden_data)
 tidy(biden_lm)
 
@@ -60,13 +60,13 @@ biden_filter <- biden_augment %>%
            abs(student) > 2 | 
            coosd > influence) %>%
   mutate(high_cooks = ifelse(coosd > influence, "high_cooks", "otherwise"),
-         high_lev = ifelse(hat > 2 * mean(hat), "high_lev" ,"otherwise"),
-         high_discrep = ifelse(abs(student) > 2, "high_discrep","otherwise"))
-
+  (high_lev = ifelse(hat>= 2 * mean(hat), "high_lev", "otherwise"),
+  (high_des = ifelse(abs(student) > 2, "high_des", "otherwise"))
+  
 # Bubble Plot
 ggplot(biden_filter, aes(hat, student)) +
   geom_hline(yintercept = 0, linetype = 2) +
-  geom_point(aes(size = coosd, color = coosd, shape = 1))+
+  geom_point(aes(size = coosd, color = coosd), shape =1) +
   scale_size_continuous(range = c(1, 20)) +
   geom_vline(xintercept = 2 * mean(biden_augment$hat)) + 
   labs(title = "Bubble plot for Leverage/Discrepancy/Influence of unusual observations",
@@ -77,9 +77,9 @@ ggplot(biden_filter, aes(hat, student)) +
 ```
 By using bubble plot, we get to know the unusual values with high leverage, discrepancy or influence.We notice that the majority of observations are in lower left corner of the graph.Next step, in order to get more understanding of outliers, we use histograms.
 
-```{r q1_1_2, include = FALSE}
+```{r q1_1_2}
 biden_augment <- biden_augment %>%
-  mutate(`unusual and/or influential observations` = ifelse(obs_num %in% biden_filter$obs_num, "Yes", "No"))
+  mutate(`unusual and/or influential observations` = ifelse(num %in% biden_filter$num, "Yes", "No"))
 
 biden_augment %>% 
   ggplot(aes(age, fill = `unusual and/or influential observations`)) +
@@ -126,14 +126,14 @@ In next step of research, I will try to add party afilliation to my model becaus
 
 # Question 2 #
 Test for non-normally distributed errors. If they are not normally distributed, propose how to correct for them.
-```{r q1_2, include = FALSE}
+```{r q1_2}
 
 tidy(biden_lm)
 car::qqPlot(biden_lm)
 ```
 From the quantile-comparison plot, graphing for each observation its studentized residual on the yy axis and the corresponding quantile in the tt-distribution on the xx axis. There are observations fall outside this dash line range,so this plot indicate there exist non-normally distributed errors. 
 
-```{r q1_3, include = FALSE}
+```{r q1_3}
 augment(biden_lm, biden_data) %>%
   mutate(.student = rstudent(biden_lm)) %>%
   ggplot(aes(.student)) +
@@ -143,7 +143,7 @@ augment(biden_lm, biden_data) %>%
 ```
 From the density plot of the studentized residuals, we can also see that the residuals are skewed. In this case we need to use power and log transformations to correct this problem. I try 2 power transformation first. 
 
-```{r q1_4, include = FALSE}
+```{r q1_4}
 
 biden_data <- biden_data %>%
   mutate(biden_power = biden^2)
@@ -162,7 +162,7 @@ augment(biden_lm2, biden_data) %>%
        y = "Estimated density")
 ```
 From summary table, some varibales are more significant. However, from the quantile-comparison plot, There still observations fall outside this dash line range,and indicate there still exist non-normally distributed errors. Then I could try to use power 3, 4, -2 for examples to test how to make the error of linear model more normally distributed.
-```{r q1_5, include = FALSE}
+```{r q1_5}
 
 biden_data <- biden_data %>%
   mutate(biden_power2 = biden^3)
@@ -183,7 +183,7 @@ augment(biden_lm3, biden_data) %>%
 # Question 3 #
 
 Test for heteroscedasticity in the model. If present, explain what impact this could have on inference.
-```{r q1_6, include = FALSE}
+```{r q1_6}
 biden_data %>%
   add_predictions(biden_lm) %>%
   add_residuals(biden_lm) %>%
@@ -198,11 +198,11 @@ biden_data %>%
 ```
 
 From the Homoscedastic varieance of error terms plot, we could know that heteroscedasticity exsit in the model.
-```{r q1_7, include = FALSE}
+```{r q1_7}
 bptest(biden_lm)
 ```
 From the bptest result, it could verify our from indusction plot above.
-```{r q1_8, include = FALSE}
+```{r q1_8}
 # convert residuals to weights
 weights <- 1 / residuals(biden_lm)^2
 
@@ -211,7 +211,7 @@ biden_wls <- lm(biden ~ age + female + educ, data = biden_data, weights = weight
 tidy(biden_wls)
 ```
 We see some mild changes in the estimated parameters, but reductions in the standard errors. We need to use more robust estimation procedure: Huber-White standard errors .
-```{r q1_9, include = FALSE}
+```{r q1_9}
 #Huber-White standard errors 
 bd_std_err <- hccm(biden_lm, type = "hc1") %>%
   diag %>%
@@ -223,7 +223,7 @@ tidy(biden_lm) %>%
 # Question 4 #
 Test for multicollinearity. If present, propose if/how to solve the problem.
 
-```{r q1_10, include = FALSE}
+```{r q1_10}
 ggpairs(select_if(biden_data, is.numeric))
 vif(biden_lm)
 ```
@@ -234,12 +234,12 @@ We can use VIF to take a look at our coefficient inflation factor.From the value
 # Question 1 #
 Evaluate the marginal effect of age on Joe Biden thermometer rating, conditional on education. Consider the magnitude and direction of the marginal effect, as well as its statistical significance.
 
-```{r q1_11, include = FALSE}
+```{r q1_11}
 biden_lm_interaction <- lm(biden ~ age + educ + age*educ, data = biden_data)
 tidy(biden_lm_interaction)
 ```
 
-```{r q1_12, include = FALSE}
+```{r q1_12}
 
 # function to get point estimates and standard errors
 # model - lm object
@@ -290,7 +290,7 @@ We could see the marginal effect of age conditional on education from the plot. 
 
 # Question 2 #
 Evaluate the marginal effect of education on Joe Biden thermometer rating, conditional on age. Consider the magnitude and direction of the marginal effect, as well as its statistical significance.
-```{r q1_13, include = FALSE}
+```{r q1_13}
 # point range plot
 instant_effect(biden_lm_interaction, "age") %>%
   ggplot(aes(z, dy.dx,
@@ -310,7 +310,7 @@ We could see the marginal effect of education conditional on age from the plot. 
 # Question #
 This time, use multiple imputation to account for the missingness in the data. Consider the multivariate normality assumption and transform any variables as you see fit for the imputation stage. Calculate appropriate estimates of the parameters and the standard errors and explain how the results differ from the original, non-imputed model.
 
-```{r q1_14, include = FALSE}
+```{r q1_14}
 ##multivariate normality assumption
 
 biden_new <- biden %>%
@@ -325,7 +325,7 @@ uniPlot(biden_new, type = "qqplot")
 
 ```
 By testing the multivariate normality, I use MVN tests to do that. From the p-value of the test, we could know the data is not multivariate normality. Also, after plotting qq plot, from the shape of plot, we could first try square root or log to tranform the model. Below, I try square root first.
-```{r q1_15, include = FALSE}
+```{r q1_15}
 #transform
 biden_test <- biden_new %>%
   mutate(sqrt_age = sqrt(age),
@@ -341,7 +341,7 @@ hzTest(biden_test %>%
 After transforming, the result is still not mutivariate normality although the result has been inproved.
 
 
-```{r q1_16, include = FALSE}
+```{r q1_16}
 ##function
 mi.meld.plus <- function(df_tidy){
   # transform data into appropriate matrix shape
